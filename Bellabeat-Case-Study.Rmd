@@ -1,0 +1,323 @@
+---
+title: "CapstoneProject"
+author: "Nguyen Nguyen"
+date: "1/28/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## STEP 1: ASK
+
+#### 1.0 Background
+
+You are a junior data analyst working on the marketing analyst team at Bellabeat, a high-tech manufacturer of health-focused products for women. Bellabeat is a successful small company, but they have the potential to become a larger player in the
+global smart device market. Urška Sršen, cofounder and Chief Creative Officer of Bellabeat, believes that analyzing smart device fitness data could help unlock new growth opportunities for the company. You have been asked to focus on one of Bellabeat’s products and analyze smart device data (ie. FitBit fitness tracker usage data) to gain insight into how consumers are using their smart devices. The insights you discover will then help guide marketing strategy for the company. You will present your analysis to the Bellabeat executive team along with your high-level recommendations for Bellabeat’s marketing strategy.
+
+#### 1.2 Business Task:
+
+Analyze FitBit Fitness Tracker Data to gain insights into how consumers are using the FitBit app and discover trends and insights for Bellabeat marketing strategy.
+
+#### 1.3 Business Objectives:
+
+1. What are some trends in smart device usage?
+2. How could these trends apply to Bellabeat customers?
+3. How could these trends help influence Bellabeat marketing strategy?
+
+### 1.4 Deliverables:
+
+1. A clear summary of the business task
+2. A description of all data sources used
+3. Documentation of any cleaning or manipulation of data
+4. A summary of analysis
+5. Supporting visualizations and key findings
+6. Your top high-level content recommendations based on your analysis
+
+
+#### 1.5 Key Stakeholders:
+
+Urška Sršen: Bellabeat’s cofounder and Chief Creative Officer
+
+Sando Mur: Mathematician and Bellabeat’s cofounder; key member of the Bellabeat executive team
+
+Bellabeat marketing analytics team: A team of data analysts responsible for collecting, analyzing, and
+reporting data that helps guide Bellabeat’s marketing strategy. You joined this team six months ago and have been busy learning about Bellabeat’’s mission and business goals — as well as how you, as a junior data analyst, can help Bellabeat achieve them.
+
+## STEP 2: PREPARE
+
+#### 2.1 Information on Data Source:
+
+1. The data is publicly available on Kaggle: FitBit Fitness Tracker Data and stored in 18 csv files.
+2. Respondents from a dispersed survey conducted via Amazon Mechanical Turk between March 12 and May 12, 2016 generated this data.
+3. The Data is made up of 30 FitBit users who agreed to have their personal tracker data shared.
+
+#### 2.2 Limitations of Data Set:
+
+1. Data was collected in 2016. Data may not be recent or meaningful because users' daily activities, fitness and sleeping habits, diet and food consumption may have modified since then.
+
+2. Sample size of 30 unidentifed gender FitBit users is not representative of the entire population. Considered that Bellabeat product is tailored for female users, the data may not be the most accurate
+
+3. As data is acquired through a survey, hence unable to determine the integrity or accuracy of data.
+
+#### 2.3 Is Data ROCCC?
+
+A good data source is ROCCC which stands for Reliable, Original, Comprehensive, Current, and Cited.
+
+Reliable - LOW - This poll is unreliable since just 30 people responded. 
+
+Original - LOW - Provided by a third party (Amazon Mechanical Turk) 
+
+Comprehensive - MED - Most of Bellabeat's products have criteria that match those of. 
+
+Current - LOW - Data is 6 years old and no longer relevant. 
+
+Cited - LOW - Data was obtained from a third party, hence the source is unclear.
+
+
+Overall, the dataset is of poor quality, and it is not recommended that business recommendations be based on it.
+
+#### 2.4 Data Selection:
+
+The "dailyActivity_merged.csv" file is chosen and copied for analysis.
+
+## STEP 3: PROCESS
+
+We are using R for data preparation and processing.
+
+#### 3.1 Preparing the Environment:
+
+Import the library that we will use to clean, process, and visulaize the data 
+
+```{r setup, results=FALSE, message=FALSE}
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(tibble)
+library(psych)
+library(ggplot2)
+library(tidyverse)
+library(RColorBrewer)
+```
+#### 3.2 Importing data set
+Reading in the file to be used for analysis.
+```{r import file,  results=FALSE, message=FALSE}
+# importing the csv file that I will be using
+dailyActivity_merged <- read_csv("/Users/nguyennguyen/Downloads/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
+```
+
+#### 3.3 Data cleaning and manipulation
+Previewing the data using the glimpse function to familiralize with the data 
+```{r basic info}
+glimpse(dailyActivity_merged)
+```
+Find out if there is any missing data in the dailyActivity_merged
+```{r missing data}
+# obtain the number of missing data points per column
+missing_values_count =  sum(is.na(dailyActivity_merged))
+missing_values_count
+```
+Finding out the basic structure of daily_activity:
+
+1. number of rows and columns
+2. name of columns
+3. type of values
+```{r structure}
+# show structure of data 
+str(dailyActivity_merged)
+```
+Note that the data frame has 940 rows and 15 columns and all of the columns are num type except for the ActivityDate column, which is chr type. 
+
+Check for the unique ID values in the table
+```{r check ID}
+# count distinct value of "Id"
+unique_id <- n_distinct(dailyActivity_merged$Id)
+print(paste("Number of unique ID: ", unique_id))
+```
+
+Create a copy of the data frame andadding three columns: DayOfWeek, TotalExerciseMinutes, and TotalExerciseHours to manipulate and make further calculation for analysis.
+```{r cars}
+# create a copy of the table to manipulate
+# adding three columns: DayOfWeek, TotalExerciseMinutes, and TotalExerciseHours
+# fill the columns with NaN
+copy_daily <- dailyActivity_merged %>%
+  add_column(DayOfWeek = NaN, .after = "ActivityDate") %>%
+  add_column(TotalExcerciseMinutes = NaN, .after = "SedentaryMinutes") %>%
+  add_column(TotalExcerciseHours = NaN, .after = "TotalExcerciseMinutes") 
+
+# verify that the columns had been added successfully
+str(copy_daily)
+```
+The following data manipulation is performed:
+
+1. For further analysis, populate column DayOfTheWeek by separating the date into days of the week.
+
+2. Populate column TotalExcerciseMinutes by summing up VeryActiveMinutes, FairlyActiveMinutes, LightlyActiveMinutes and SedentaryMinutes.
+
+3. Populate column TotalHours by dividing the TotalExcerciseMinutes by 60.
+```{r populate cols}
+# Populate the values for the DayOfWeek column
+copy_daily$DayOfWeek = weekdays(as.Date(dailyActivity_merged$ActivityDate, "%m/%d/%Y"))
+
+
+# Populate the TotalExcerciseMinutes column by adding up all of the minutes of the corresponding day
+copy_daily$TotalExcerciseMinutes = copy_daily$VeryActiveMinutes + copy_daily$FairlyActiveMinutes + copy_daily$LightlyActiveMinutes + copy_daily$SedentaryMinutes
+
+
+# Populate the TotalExcerciseHours column by dividing the TotalExcerciseMinutes by 60
+copy_daily$TotalExcerciseHours = round(copy_daily$TotalExcerciseMinutes/60, digits=0)
+
+# verify that the columns have been populated successfully
+glimpse(copy_daily)
+```
+
+The data cleaning and manipulation process has been completed. As a result, the data is now ready for analysis.
+
+
+## STEP 4: ANALYZE
+
+#### 4.1 Perform calculations
+
+Pulling the statistics of copy_daily for analysis:
+
+1. count - number of rows
+2. mean (average)
+3. std (standard deviation)
+4. min 
+5. max
+
+```{r general stats, warning=FALSE}
+# getting the general statistics of the table
+format(describeBy(copy_daily), scientific=FALSE)
+```
+**Interpreting statistical findings:**
+
+Users logged 7,638 steps on average, which is insufficient. According to the CDC, an adult should aim for at least 10,000 steps per day to benefit from general health, weight loss, and fitness improvement. 
+
+Sedentary users account for the vast majority, logging an average of 991 minutes or 20 hours per day, accounting for 81% of overall average minutes. 
+
+It is worth noting that the average number of calories burned is 2,303. Could not go into detail because calories burned are affected by a variety of factors like age, mass, everyday chores, exercise, hormones, and everyday calorie consumption.
+
+## STEP 5: SHARE
+
+We are producing visuals and presenting our conclusions based on our analysis in this step.
+
+#### 5.1 Data Visualisation and Findings
+```{r bar graph, message=FALSE}
+# displaying the bar graph to see how often the users use the app throughout the week
+ggplot(data=copy_daily, mapping= aes(x=DayOfWeek)) +
+  geom_bar(color="black", fill="yellow" ) + 
+  labs(title = "Number of time used throughout the week")
+```
+
+**Frequency of usage across the week**
+
+We're looking at the regularity of FitBit app usage in terms of days of the week in this graph. 
+
+1. We noticed that users prefer or remember (providing them the impression of benefit that they have forgotten) to record their activities on the app throughout the weekdays of Tuesday through Friday. 
+
+2. It is worth noting that the frequency reduced on Friday and will continue over the weekend and Monday.
+```{r scatter plot 1}
+# extract the median calories and steps from above table
+med_calories <-  2134
+med_steps <- 7405
+
+# scatter plot to graph Calories vs TotalSteps
+# also plot the median calories and median steps
+ggplot(data=copy_daily,mapping=aes(x=TotalSteps, y=Calories,color=Calories)) + geom_point() + scale_colour_gradient(low="red", high="green") +
+  geom_hline(yintercept = med_calories)+ 
+  geom_vline(xintercept = med_steps) +
+  labs(title = "Calories burn per steps")+
+  annotate("text",x=3850, y=5000,label="Median steps")+
+  annotate("text",x=30000, y=2250,label="Median calories")
+```
+
+**Every step you take burns calories.**
+
+We discovered from the scatter plot: 
+
+1. It is a positive relationship. 
+
+2. We discovered that the intensity of calories burned increases when users are between 0 and 14,000 steps, with the rate of calories burned decreasing after 14,000 steps. 
+
+3. There were a few outliers: 
+
+* No steps taken, and no to little calories were burned. 
+* One observation of more than 35,000 steps with less than 3,000 calories burnt. 
+* Outliers could happened due to  the result of natural variance in data, changes in user activity, or errors in data collecting (ie. miscalculations, data contamination or human error).
+```{r scatter plot 2}
+# extract the median hours and sedentary hours from above table
+med_hours <- 24
+med_sedentary <- 1057/60
+
+# scatter plot to graph Calories vs TotalExcerciseHours
+# also plot the median calories, median total hours, and median sedentary hour
+ggplot(data=copy_daily,mapping=aes(x=TotalExcerciseHours, y=Calories,color=Calories)) +
+  geom_point() + scale_colour_gradient(low="red", high="green") +
+  geom_hline(yintercept = med_calories)+ 
+  geom_vline(xintercept = med_hours) +
+  geom_vline(xintercept = med_sedentary) +
+  labs(title = "Calories burn per steps") +
+  annotate("text",x=2, y=2250,label="Median calories")+
+  annotate("text",x=15, y=0,label="Median sedentary")+
+  annotate("text",x=22, y=5000,label="Median hours ")
+```
+
+**Calories burned for each tracked hour**
+
+The scatter plot reveals: 
+
+A weak positive association in which the number of hours logged does not correspond to the number of calories burned. This is mostly attributable to the average sedentary hours plotted between 16 and 17 hours. 
+
+We can detect a few outliers once more: 
+
+* Outliers with the same zero value 
+* A strange red dot at 24 hours with no calories burned, which could be due to the same causes as stated above.
+
+
+```{r piechart}
+# calculating total of individual minutes column
+very_active_mins = sum(copy_daily$VeryActiveMinutes)
+fairly_active_mins = sum(copy_daily$FairlyActiveMinutes)
+lightly_active_mins = sum(copy_daily$LightlyActiveMinutes)
+sedentary_mins = sum(copy_daily$SedentaryMinutes)
+
+# pie chart to display the minutes columns
+value=c(very_active_mins,fairly_active_mins,lightly_active_mins ,sedentary_mins)
+pie_labels <- paste0(round(100 * value/sum(value), 2), "%")
+pie(value, labels = pie_labels,col=c("slateblue", "orange", "chartreuse4", "lightcoral"),main = "Activity in Minutes Percentage")
+
+# legend of the pie chart 
+legend("topleft", inset = -.0001, legend = c("Very Active","Fairly Active","Lightly Active" ,"Sedentary"), fill =  c("slateblue", "orange", "chartreuse4", "lightcoral"),cex = 0.85)
+```
+
+**Minutes of Activity as a Percentage**
+
+As evidenced by the pie chart:
+
+1. Sedentary minutes account for the largest chunk, accounting for 81.3 percent. 
+
+2. This means that users are logging everyday activities such as daily commutes, idle movements (going from one location to another), or doing errands using the FitBit app. 
+
+3. According to the modest percentage of fairly active activity (1.1 percent) and very active activity (1.7 percent), the app is rarely used to track fitness. This is quite discouraging because the FitBit app was designed to promote fitness.
+
+## STEP 6: ACT
+
+In the final stage, we will present our findings and make suggestions based on our study. 
+
+In this section, we review our business questions and discuss our high-level business recommendations.
+
+**1. What are the discovered trends?**
+
+* The FitBit app is used by the majority of users (81.3 percent) to record sedentary behaviors rather than health practices. 
+
+* Users prefer to record their activities throughout the week as opposed to the weekends, possibly because they spend more time outside during the week and stay indoors on weekends. 
+
+**2. What implications do these patterns have for Bellabeat customers?** 
+
+* Both companies create products aimed at giving women with information on their health, behaviors, and fitness, as well as helping them to understand their present styles and make good choices. These prevalent health and fitness trends can very well be applied to Bellabeat clients.
+
+**3. How can these tendencies affect Bellabeat's marketing strategy? **
+
+* The Bellabeat marketing team can encourage customers by teaching and preparing them with knowledge about fitness benefits, recommending different forms of exercise, and providing calories consumption and burn summary data on the Bellabeat app. 
+
+* On weekends, the Bellabeat app can send notifications to motivate users to workout.
